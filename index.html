@@ -122,52 +122,72 @@
       'Finalizing report...'
     ];
 
+    const fill = document.getElementById('fill');
+    const status = document.getElementById('status');
+    const btn = document.getElementById('startBtn');
+    const jump = document.getElementById('jump');
+    const jumpImg = document.getElementById('jumpImg');
+
+    const remoteImageUrl = '';
+    if (remoteImageUrl) {
+      jumpImg.src = remoteImageUrl;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     function playScareSound() {
       try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+
         const ctx = new AudioContextClass();
+        const now = ctx.currentTime;
 
         const master = ctx.createGain();
         master.gain.value = 0.22;
         master.connect(ctx.destination);
 
-        const now = ctx.currentTime;
-
         const osc1 = ctx.createOscillator();
         const osc2 = ctx.createOscillator();
         const osc3 = ctx.createOscillator();
-        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
-        const data = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-        const noise = ctx.createBufferSource();
-        noise.buffer = noiseBuffer;
 
         const gain1 = ctx.createGain();
         const gain2 = ctx.createGain();
         const gain3 = ctx.createGain();
-        const noiseGain = ctx.createGain();
+
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1.0, ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
         const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 1800;
+        noiseFilter.Q.value = 0.9;
+
+        const noiseGain = ctx.createGain();
 
         osc1.type = 'sawtooth';
         osc2.type = 'square';
         osc3.type = 'triangle';
-        noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.value = 1800;
-        noiseFilter.Q.value = 0.8;
 
-        osc1.frequency.setValueAtTime(1400, now);
-        osc1.frequency.exponentialRampToValueAtTime(160, now + 0.8);
+        osc1.frequency.setValueAtTime(1500, now);
+        osc1.frequency.exponentialRampToValueAtTime(170, now + 0.85);
 
-        osc2.frequency.setValueAtTime(95, now);
-        osc2.frequency.exponentialRampToValueAtTime(45, now + 0.8);
+        osc2.frequency.setValueAtTime(110, now);
+        osc2.frequency.exponentialRampToValueAtTime(55, now + 0.85);
 
-        osc3.frequency.setValueAtTime(40, now);
-        osc3.frequency.exponentialRampToValueAtTime(22, now + 0.8);
+        osc3.frequency.setValueAtTime(45, now);
+        osc3.frequency.exponentialRampToValueAtTime(25, now + 0.85);
 
         gain1.gain.setValueAtTime(0.0001, now);
-        gain1.gain.exponentialRampToValueAtTime(0.32, now + 0.015);
+        gain1.gain.exponentialRampToValueAtTime(0.34, now + 0.015);
         gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
 
         gain2.gain.setValueAtTime(0.0001, now);
@@ -179,7 +199,7 @@
         gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
 
         noiseGain.gain.setValueAtTime(0.0001, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.18, now + 0.01);
+        noiseGain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
         noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
 
         osc1.connect(gain1).connect(master);
@@ -196,41 +216,20 @@
         osc2.stop(now + 0.95);
         osc3.stop(now + 0.95);
         noise.stop(now + 0.5);
-      } catch (e) {}
-    }
-
-    const fill = document.getElementById('fill');
-    const status = document.getElementById('status');
-    const btn = document.getElementById('startBtn');
-    const jump = document.getElementById('jump');
-    const jumpImg = document.getElementById('jumpImg');
-
-    // Best option: keep a local file like download.jpeg beside this HTML file.
-    // If you ever get a DIRECT image URL ending in .jpg/.png/.jpeg/.webp, you can put it here.
-    const remoteImageUrl = '';
-    if (remoteImageUrl) {
-      jumpImg.src = remoteImageUrl;
-    }
-
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     async function runScan() {
       btn.disabled = true;
       btn.textContent = 'Running...';
+      fill.style.width = '0%';
 
       for (let i = 0; i < steps.length; i++) {
         status.textContent = steps[i];
         fill.style.width = `${((i + 1) / steps.length) * 100}%`;
-
-        );
-          } catch (e) {}
-        });
-          } catch (e) {}
-        }
-
-        await sleep(900);
+        await sleep(700);
       }
 
       document.body.style.background = 'black';
@@ -243,7 +242,6 @@
 
       jump.style.display = 'none';
       jump.classList.remove('flash');
-      jump.classList.remove('expand');
       document.getElementById('card').style.display = 'block';
       document.body.style.background = '#f4f4f4';
       status.textContent = 'Scan complete.';
@@ -255,3 +253,4 @@
   </script>
 </body>
 </html>
+
