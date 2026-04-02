@@ -140,65 +140,92 @@
           const now = ctx.currentTime;
 
           const master = ctx.createGain();
-          master.gain.value = 0.55;
-          master.connect(ctx.destination);
+          const limiter = ctx.createDynamicsCompressor();
+          limiter.threshold.value = -8;
+          limiter.knee.value = 6;
+          limiter.ratio.value = 12;
+          limiter.attack.value = 0.003;
+          limiter.release.value = 0.2;
+
+          master.gain.value = 0.95;
+          master.connect(limiter);
+          limiter.connect(ctx.destination);
+
+          const makeNoise = () => {
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) {
+              data[i] = Math.random() * 2 - 1;
+            }
+            const src = ctx.createBufferSource();
+            src.buffer = buffer;
+            return src;
+          };
 
           const osc1 = ctx.createOscillator();
           const osc2 = ctx.createOscillator();
           const osc3 = ctx.createOscillator();
+          const noise = makeNoise();
+
           const gain1 = ctx.createGain();
           const gain2 = ctx.createGain();
           const gain3 = ctx.createGain();
-
-          // noise layer for scarier sound
-          const buffer = ctx.createBuffer(1, ctx.sampleRate * 1, ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < data.length; i++) {
-            data[i] = Math.random() * 2 - 1;
-          }
-          const noise = ctx.createBufferSource();
-          noise.buffer = buffer;
           const noiseGain = ctx.createGain();
-          noiseGain.gain.value = 0.25;
-          noise.connect(noiseGain).connect(master);
+
+          const noiseFilter = ctx.createBiquadFilter();
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.setValueAtTime(2200, now);
+          noiseFilter.Q.value = 1.2;
+
+          const highpass = ctx.createBiquadFilter();
+          highpass.type = 'highpass';
+          highpass.frequency.value = 120;
 
           osc1.type = 'sawtooth';
           osc2.type = 'square';
           osc3.type = 'triangle';
 
-          osc1.frequency.setValueAtTime(1500, now);
-          osc1.frequency.exponentialRampToValueAtTime(170, now + 0.85);
-          osc2.frequency.setValueAtTime(110, now);
-          osc2.frequency.exponentialRampToValueAtTime(55, now + 0.85);
-          osc3.frequency.setValueAtTime(45, now);
-          osc3.frequency.exponentialRampToValueAtTime(25, now + 0.85);
+          osc1.frequency.setValueAtTime(1900, now);
+          osc1.frequency.exponentialRampToValueAtTime(240, now + 0.95);
+
+          osc2.frequency.setValueAtTime(140, now);
+          osc2.frequency.exponentialRampToValueAtTime(52, now + 0.95);
+
+          osc3.frequency.setValueAtTime(70, now);
+          osc3.frequency.exponentialRampToValueAtTime(30, now + 0.95);
 
           gain1.gain.setValueAtTime(0.0001, now);
-          gain1.gain.exponentialRampToValueAtTime(0.34, now + 0.015);
-          gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+          gain1.gain.exponentialRampToValueAtTime(0.75, now + 0.01);
+          gain1.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
 
           gain2.gain.setValueAtTime(0.0001, now);
-          gain2.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
-          gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+          gain2.gain.exponentialRampToValueAtTime(0.45, now + 0.015);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
 
           gain3.gain.setValueAtTime(0.0001, now);
-          gain3.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-          gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+          gain3.gain.exponentialRampToValueAtTime(0.28, now + 0.015);
+          gain3.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
 
-          osc1.connect(gain1);
-          gain1.connect(master);
-          osc2.connect(gain2);
-          gain2.connect(master);
-          osc3.connect(gain3);
-          gain3.connect(master);
+          noiseGain.gain.setValueAtTime(0.0001, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.55, now + 0.008);
+          noiseGain.gain.exponentialRampToValueAtTime(0.18, now + 0.18);
+          noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
 
-          noise.start(now);
+          osc1.connect(gain1).connect(highpass);
+          osc2.connect(gain2).connect(highpass);
+          osc3.connect(gain3).connect(highpass);
+          noise.connect(noiseFilter).connect(noiseGain).connect(highpass);
+          highpass.connect(master);
+
           osc1.start(now);
           osc2.start(now);
           osc3.start(now);
-          osc1.stop(now + 0.95);
-          osc2.stop(now + 0.95);
-          osc3.stop(now + 0.95);
+          noise.start(now);
+
+          osc1.stop(now + 1.0);
+          osc2.stop(now + 1.0);
+          osc3.stop(now + 1.0);
+          noise.stop(now + 1.0);
         } catch (e) {
           console.log(e);
         }
@@ -237,4 +264,3 @@
   </script>
 </body>
 </html>
-
