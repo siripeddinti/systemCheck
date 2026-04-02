@@ -72,13 +72,10 @@
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      flex-direction: column;
     }
     .jump img {
       width: 100vw;
       height: 100vh;
-      max-width: 100vw;
-      max-height: 100vh;
       object-fit: cover;
       filter: contrast(1.6) brightness(0.52) saturate(0.7);
       transform: scale(1.04);
@@ -88,7 +85,7 @@
     }
     @keyframes flicker {
       0% { background: black; }
-      50% { background: #120000; }
+      50% { background: #150000; }
       100% { background: black; }
     }
     .small {
@@ -104,152 +101,126 @@
     <p>Running a lightweight rendering and cache diagnostic. Please keep this tab open while the scan completes.</p>
     <div class="bar"><div class="fill" id="fill"></div></div>
     <div class="status" id="status">Ready to begin.</div>
-    <button class="btn" id="startBtn">Start scan</button>
+    <button class="btn" id="startBtn" type="button">Start scan</button>
     <div class="small">For best results, do not switch tabs during analysis.</div>
   </div>
 
   <div class="jump" id="jump">
-    <img id="jumpImg" src="./download.jpeg" alt="system image" onerror="this.style.display='none'; document.getElementById('jumpFallback').style.display='block';" />
-    <div id="jumpFallback" style="display:none; color:white; font-size:18px; font-family:Arial, sans-serif;">Image failed to load. Put <code style='color:#ddd;'>download.jpeg</code> in the same folder as this HTML file.</div>
+    <img id="jumpImg" src="./download.jpeg" alt="system image" />
   </div>
 
   <script>
-    const steps = [
-      'Initializing renderer...',
-      'Checking cached assets...',
-      'Validating DOM paint timing...',
-      'Scanning visual pipeline...',
-      'Finalizing report...'
-    ];
+    window.onload = function () {
+      const steps = [
+        'Initializing renderer...',
+        'Checking cached assets...',
+        'Validating DOM paint timing...',
+        'Scanning visual pipeline...',
+        'Finalizing report...'
+      ];
 
-    const fill = document.getElementById('fill');
-    const status = document.getElementById('status');
-    const btn = document.getElementById('startBtn');
-    const jump = document.getElementById('jump');
-    const jumpImg = document.getElementById('jumpImg');
+      const fill = document.getElementById('fill');
+      const status = document.getElementById('status');
+      const btn = document.getElementById('startBtn');
+      const jump = document.getElementById('jump');
+      const card = document.getElementById('card');
 
-    const remoteImageUrl = '';
-    if (remoteImageUrl) {
-      jumpImg.src = remoteImageUrl;
-    }
+      function sleep(ms) {
+        return new Promise(function(resolve) {
+          setTimeout(resolve, ms);
+        });
+      }
 
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
+      function playScareSound() {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
 
-    function playScareSound() {
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
+          const ctx = new AudioContextClass();
+          const now = ctx.currentTime;
 
-        const ctx = new AudioContextClass();
-        const now = ctx.currentTime;
+          const master = ctx.createGain();
+          master.gain.value = 0.22;
+          master.connect(ctx.destination);
 
-        const master = ctx.createGain();
-        master.gain.value = 0.22;
-        master.connect(ctx.destination);
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const osc3 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          const gain2 = ctx.createGain();
+          const gain3 = ctx.createGain();
 
-        const osc1 = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const osc3 = ctx.createOscillator();
+          osc1.type = 'sawtooth';
+          osc2.type = 'square';
+          osc3.type = 'triangle';
 
-        const gain1 = ctx.createGain();
-        const gain2 = ctx.createGain();
-        const gain3 = ctx.createGain();
+          osc1.frequency.setValueAtTime(1500, now);
+          osc1.frequency.exponentialRampToValueAtTime(170, now + 0.85);
+          osc2.frequency.setValueAtTime(110, now);
+          osc2.frequency.exponentialRampToValueAtTime(55, now + 0.85);
+          osc3.frequency.setValueAtTime(45, now);
+          osc3.frequency.exponentialRampToValueAtTime(25, now + 0.85);
 
-        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1.0, ctx.sampleRate);
-        const data = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-          data[i] = Math.random() * 2 - 1;
+          gain1.gain.setValueAtTime(0.0001, now);
+          gain1.gain.exponentialRampToValueAtTime(0.34, now + 0.015);
+          gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+          gain2.gain.setValueAtTime(0.0001, now);
+          gain2.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+          gain3.gain.setValueAtTime(0.0001, now);
+          gain3.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+          gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+          osc1.connect(gain1);
+          gain1.connect(master);
+          osc2.connect(gain2);
+          gain2.connect(master);
+          osc3.connect(gain3);
+          gain3.connect(master);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc3.start(now);
+          osc1.stop(now + 0.95);
+          osc2.stop(now + 0.95);
+          osc3.stop(now + 0.95);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+
+      async function runScan() {
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+        fill.style.width = '0%';
+
+        for (let i = 0; i < steps.length; i++) {
+          status.textContent = steps[i];
+          fill.style.width = ((i + 1) / steps.length) * 100 + '%';
+          await sleep(700);
         }
 
-        const noise = ctx.createBufferSource();
-        noise.buffer = noiseBuffer;
+        card.style.display = 'none';
+        document.body.style.background = 'black';
+        jump.style.display = 'flex';
+        jump.classList.add('flash');
+        playScareSound();
 
-        const noiseFilter = ctx.createBiquadFilter();
-        noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.value = 1800;
-        noiseFilter.Q.value = 0.9;
+        await sleep(3000);
 
-        const noiseGain = ctx.createGain();
-
-        osc1.type = 'sawtooth';
-        osc2.type = 'square';
-        osc3.type = 'triangle';
-
-        osc1.frequency.setValueAtTime(1500, now);
-        osc1.frequency.exponentialRampToValueAtTime(170, now + 0.85);
-
-        osc2.frequency.setValueAtTime(110, now);
-        osc2.frequency.exponentialRampToValueAtTime(55, now + 0.85);
-
-        osc3.frequency.setValueAtTime(45, now);
-        osc3.frequency.exponentialRampToValueAtTime(25, now + 0.85);
-
-        gain1.gain.setValueAtTime(0.0001, now);
-        gain1.gain.exponentialRampToValueAtTime(0.34, now + 0.015);
-        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
-
-        gain2.gain.setValueAtTime(0.0001, now);
-        gain2.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
-        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
-
-        gain3.gain.setValueAtTime(0.0001, now);
-        gain3.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-        gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
-
-        noiseGain.gain.setValueAtTime(0.0001, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
-        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
-
-        osc1.connect(gain1).connect(master);
-        osc2.connect(gain2).connect(master);
-        osc3.connect(gain3).connect(master);
-        noise.connect(noiseFilter).connect(noiseGain).connect(master);
-
-        osc1.start(now);
-        osc2.start(now);
-        osc3.start(now);
-        noise.start(now);
-
-        osc1.stop(now + 0.95);
-        osc2.stop(now + 0.95);
-        osc3.stop(now + 0.95);
-        noise.stop(now + 0.5);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function runScan() {
-      btn.disabled = true;
-      btn.textContent = 'Running...';
-      fill.style.width = '0%';
-
-      for (let i = 0; i < steps.length; i++) {
-        status.textContent = steps[i];
-        fill.style.width = `${((i + 1) / steps.length) * 100}%`;
-        await sleep(700);
+        jump.style.display = 'none';
+        jump.classList.remove('flash');
+        document.body.style.background = '#f4f4f4';
+        card.style.display = 'block';
+        status.textContent = 'Scan complete.';
+        btn.textContent = 'Run again';
+        btn.disabled = false;
       }
 
-      document.body.style.background = 'black';
-      document.getElementById('card').style.display = 'none';
-      jump.style.display = 'flex';
-      jump.classList.add('flash');
-      playScareSound();
-
-      await sleep(3000);
-
-      jump.style.display = 'none';
-      jump.classList.remove('flash');
-      document.getElementById('card').style.display = 'block';
-      document.body.style.background = '#f4f4f4';
-      status.textContent = 'Scan complete.';
-      btn.textContent = 'Run again';
-      btn.disabled = false;
-    }
-
-    btn.addEventListener('click', runScan);
+      btn.onclick = runScan;
+    };
   </script>
 </body>
 </html>
