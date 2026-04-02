@@ -75,10 +75,11 @@
       flex-direction: column;
     }
     .jump img {
-      max-width: 100vw;
-      max-height: 100vh;
-      object-fit: contain;
-      filter: contrast(1.35) brightness(0.7) saturate(0.7);
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      filter: contrast(1.45) brightness(0.62) saturate(0.7);
+      transform: scale(1.02);
     }
     .flash {
       animation: flicker 0.08s steps(2) 10;
@@ -119,6 +120,11 @@
       'Finalizing report...'
     ];
 
+    const scareSounds = [
+      'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+      'https://actions.google.com/sounds/v1/alarms/beep_short.ogg'
+    ];
+
     const fill = document.getElementById('fill');
     const status = document.getElementById('status');
     const btn = document.getElementById('startBtn');
@@ -144,11 +150,14 @@
         status.textContent = steps[i];
         fill.style.width = `${((i + 1) / steps.length) * 100}%`;
 
-        if (i === 2) {
+        if (i === 1) {
           try {
-            const earlyAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+            const earlyAudio = new Audio(scareSounds[0]);
             earlyAudio.volume = 1.0;
+            earlyAudio.playbackRate = 1.15;
             earlyAudio.play().catch(() => {});
+          } catch (e) {}
+        });
           } catch (e) {}
         }
 
@@ -159,6 +168,20 @@
       document.getElementById('card').style.display = 'none';
       jump.style.display = 'flex';
       jump.classList.add('flash');
+
+      try {
+        const alarm1 = new Audio(scareSounds[0]);
+        alarm1.volume = 1.0;
+        alarm1.playbackRate = 1.2;
+        alarm1.play().catch(() => {});
+
+        setTimeout(() => {
+          const alarm2 = new Audio(scareSounds[1]);
+          alarm2.volume = 1.0;
+          alarm2.playbackRate = 0.95;
+          alarm2.play().catch(() => {});
+        }, 250);
+      } catch (e) {}
 
       await sleep(2000);
 
